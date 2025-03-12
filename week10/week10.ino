@@ -43,11 +43,11 @@ void setup() {
 
 void loop() {
 
-  printAlphabet();
+  //printAlphabet();
 
-  //measureHz();
+  measureHz();
 
-  //displayInfo();
+  displayInfo();
 
 }
 

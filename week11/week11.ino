@@ -8,6 +8,7 @@ volatile int pressCount = 0;
 unsigned long lastPressTime = 0;
 unsigned long prevTime = 0;
 float frequency = 0.0;
+float windSpeed = 0.0;
 const int buttonPin = 2;
 volatile unsigned int buttonPressCount = 0; 
 volatile unsigned long lastInterruptTime = 0; 
@@ -22,6 +23,12 @@ byte rowPins[ROWS] = {A4};
 byte colPins[COLS] = {A0, A1, A2, A3};  
 
 Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
+
+char lastKeyPressed = '1';
+
+const int windDirPin = A7;
+
+float windDirVolts = 0.0;
 
 void buttonISR() {
     unsigned long currentTime = millis();
@@ -46,25 +53,89 @@ void setup() {
   // pinMode(13, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
   pinMode(signalPin, INPUT);
+  pinMode(windDirPin, INPUT);
 
   attachInterrupt(digitalPinToInterrupt(buttonPin), buttonISR, FALLING);
   attachInterrupt(digitalPinToInterrupt(signalPin), signalISR, RISING);
 }
 
 void loop() {
-
-  //printAlphabet();
-
   measureHz();
 
-  displayInfo();
-
+  float windDirAnalog = analogRead(windDirPin);
+  //Serial.println(windDir);
+  windDirVolts = windDirAnalog * (5.0 / 1023.0);
+  
   char customKey = customKeypad.getKey();
   
-  if (customKey){
+  if (customKey) {
     Serial.println(customKey);
+    lastKeyPressed = customKey;
+    lcd.clear(); // Clear the screen when a new key is pressed
   }
 
+  // Display based on the last key pressed
+  if (lastKeyPressed == '1') {
+    displayHz();
+  }
+  else if (lastKeyPressed == '2') {
+    displayWindSpeed();
+  }
+  else if (lastKeyPressed == '3'){
+    displayWindDegree();
+  }
+  else if (lastKeyPressed == 'A') {
+    displayWindVolts();
+  }
+  
+}
+
+float getWindDirectionDegree(float voltage) {
+  if (voltage < 1.44) {       
+    return 0;                 // North (0°)
+  } else if (voltage < 1.91){
+    return 45;                // North East (45°)
+  } else if (voltage < 2.39){ 
+    return 90;                // East (90°)
+  } else if (voltage < 2.86){ 
+    return 135;               // South East (135°)
+  } else if (voltage < 3.34){
+    return 180;               // South (180°)
+  } else if (voltage < 3.81){ 
+    return 225;               // South West (225°)
+  } else if (voltage < 4.29){ 
+    return 270;               // West (270°)
+  } else {                    
+    return 315;               // North West (315°)
+  }
+}
+
+void displayWindDegree() {
+  float windDirDegree = getWindDirectionDegree(windDirVolts);
+
+  String directionStr = "";
+  if (windDirDegree == 0) directionStr = "N";
+  else if (windDirDegree == 45) directionStr = "NE";
+  else if (windDirDegree == 90) directionStr = "E";
+  else if (windDirDegree == 135) directionStr = "SE";
+  else if (windDirDegree == 180) directionStr = "S";
+  else if (windDirDegree == 225) directionStr = "SW";
+  else if (windDirDegree == 270) directionStr = "W";
+  else if (windDirDegree == 315) directionStr = "NW";
+
+  lcd.setCursor(0,1);
+  lcd.print("Wind Dir:");
+  lcd.print(directionStr);
+  lcd.setCursor(13, 1);
+  lcd.print(windDirDegree);
+  lcd.print((char)223); // Degree symbol (°)
+}
+void displayWindVolts() {
+  lcd.setCursor(0,1);
+  lcd.print("Wind Volts: ");
+  lcd.print(windDirVolts);
+  lcd.setCursor(18, 1);
+  lcd.print("V");
 }
 
 void displayInfo() {
@@ -89,12 +160,29 @@ void displayInfo() {
   lcd.print("hz");
 }
 
+void displayHz() {
+  lcd.setCursor(0,1);
+  lcd.print("frequency: ");
+  lcd.print(frequency);
+  lcd.setCursor(18, 1);
+  lcd.print("hz");
+}
+
+void displayWindSpeed() {
+  lcd.setCursor(0,1);
+  lcd.print("WindSpeed: ");
+  lcd.print(windSpeed);
+  lcd.setCursor(17, 1);
+  lcd.print("m/s");
+}
+
 void measureHz() {
   unsigned long currentTime = millis();
   
   if (currentTime - prevTime >= 1000) { 
     noInterrupts();
     frequency = pulseCount;
+    windSpeed = frequency * 0.7;
     pulseCount = 0;
     interrupts();
 
