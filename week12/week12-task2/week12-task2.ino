@@ -88,8 +88,7 @@ const int windDirPin = A7;
 
 float windDirVolts = 0.0;
 
-
-void fetchIP();
+IPAddress IP;
 
 
 void signalISR() {
@@ -99,8 +98,6 @@ void signalISR() {
 
 void setup() {
   Serial.begin(9600);
-
-  fetchIP();
   // set up the LCD's number of columns and rows:
   lcd.begin(20, 4);
   pulseCount = 0;
@@ -121,12 +118,11 @@ void setup() {
   pinMode(windDirPin, INPUT);
 
   attachInterrupt(digitalPinToInterrupt(signalPin), signalISR, RISING);
-
-
-
+  fetchIP();
 }
 
 void loop() {
+
   unsigned long currentTime = millis();
   
 
@@ -165,6 +161,7 @@ void updateDisplay(){
     displayHz();
   }
   else if (lastKeyPressed == '2') {
+    displayIP();
     displayAvgWindSpeed();
   }
   else if (lastKeyPressed == '3'){
@@ -309,6 +306,12 @@ void displayHz() {
   lcd.print("hz");
 }
 
+void displayIP() {
+  lcd.setCursor(0, 0);
+  lcd.print("IP:");
+  lcd.print(IP);
+}
+
 void displayWindSpeed() {
   unsigned long currentTime = millis();
   lcd.setCursor(0,1);
@@ -370,17 +373,23 @@ void printAlphabet() {
 void fetchIP() {
   byte connection = 1;
   connection = Ethernet.begin(mymac);
-  lcd.setCursor(0, 1);
-  lcd.print(("\nW5100 Revision "));
+  // lcd.setCursor(0, 1);
+  // lcd.print(("\nW5100 Revision "));
   if (connection == 0) {
-    lcd.print(("Failed to access Ethernet controller"));
+    //lcd.print(("Failed to access Ethernet controller"));
+    Serial.println(F("Failed to access Ethernet controller"));
   }
   
-  lcd.print(("Setting up DHCP"));
-  lcd.print("Connected with IP: ");
+  // lcd.print(("Setting up DHCP"));
+  // lcd.print("Connected with IP: ");
 
-  IPAddress ip = Ethernet.localIP();
-  lcd.print(ip);
+  // IPAddress ip = Ethernet.localIP();
+  // lcd.print(ip);
+  
+  Serial.println(F("Setting up DHCP"));
+  Serial.print("Connected with IP: ");
+  Serial.println(Ethernet.localIP());
+  IP = Ethernet.localIP();
 
   delay(1500);
 }
