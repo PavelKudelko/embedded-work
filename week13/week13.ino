@@ -1,6 +1,6 @@
 #include <LiquidCrystal.h>
 #include <Keypad.h>
-
+#include <stdio.h>
 #include <PubSubClient.h>
 
 #include <Ethernet.h>
@@ -162,7 +162,7 @@ void updateDisplay(){
     }
     else if (lastKeyPressed == '2') {
         send_MQTT_message_1();
-        displayIP();
+        //displayIP();
         
         // Create JSON with actual wind speed value
 
