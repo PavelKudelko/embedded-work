@@ -6,28 +6,32 @@
 #include <Ethernet.h>
 #include <SPI.h>
 #include <Wire.h>
-// #define MAC_6    0x73
+#define MAC_6    0x69
 // Define custom pins if not using standard ones
 #define ETHERNET_CS_PIN 10
 // might need fixing
 // static uint8_t mymac[6] = { 0x44, 0x76, 0x58, 0x10, 0x00, MAC_6 };
 
-
-
-
-byte server[] = { 10,6,0,21 }; // MQTT-palvelimen IP-osoite 
+byte server[] = { 10,6,1,15 }; // MQTT-palvelimen IP-osoite 
 unsigned int Port = 1883;  // MQTT-palvelimen portti 
 EthernetClient ethClient; // Ethernet-kirjaston client-olio 
-//void callback(char* topic, byte* payload, unsigned int length);
-PubSubClient client(server, Port,  ethClient); // PubSubClient-olion luominen 
+void callback(char* topic, byte* payload, unsigned int length){
+  Serial.println("Message receiveddddd");
+};
+PubSubClient client(server, Port,  callback, ethClient); // PubSubClient-olion luominen 
  
-#define outTopic   "ICT4_out_2020" // Aihe, jolle viesti lähetetään 
+#define outTopic   "ICT4_out_202000000000000000000000000" // Aihe, jolle viesti lähetetään 
  
-static uint8_t mymac[6] = { 0x44,0x76,0x58,0x10,0x00,0x62 }; // MAC-osoite Ethernet-liitäntää varten 
+static uint8_t mymac[6] = { 0x44,0x76,0x58,0x10,0x00, MAC_6 }; // MAC-osoite Ethernet-liitäntää varten 
  
-char* clientId = "a731fsd4";
+char* clientId = "a731fsd9";
 char* deviceId = "supersonic2025";
 char* deviceSecret = "tamk";
+
+
+
+char bufa_speed[128];
+char bufa_dir[128];
 
 // Sampling and averaging variables
 unsigned long sampleInterval = 500; // 500ms = 2 samples per second
@@ -97,10 +101,7 @@ void setup() {
     windDirSamples[i] = 0.0;
     windSpeedSamples[i] = 0.0;
   }
-  // pinMode(LED_BUILTIN, OUTPUT);
-  // pinMode(6, INPUT);
-  // pinMode(A2, INPUT);
-  // pinMode(13, OUTPUT);
+
 
   pinMode(signalPin, INPUT);
   pinMode(windDirPin, INPUT);
@@ -109,42 +110,46 @@ void setup() {
 
   fetchIP();
   connect_MQTT_server();
+
+
+
 }
 
 void loop() {
 
-  send_MQTT_message();
 
-  // unsigned long currentTime = millis();
+
+  unsigned long currentTime = millis();
   
 
-  //   // Sample at the defined interval (500ms = 2 samples/second)
-  // if (currentTime - lastSampleTime >= sampleInterval) {
-  //   measureHz();
-  //   measureWindDirection();
-  //   addSample();
-  //   lastSampleTime = currentTime;
-  // }
+    // Sample at the defined interval (500ms = 2 samples/second)
+  if (currentTime - lastSampleTime >= sampleInterval) {
+    measureHz();
+    measureWindDirection();
+    addSample();
+    lastSampleTime = currentTime;
+  }
   
-  // // Update averages and display every 5 seconds
-  // if (currentTime - displayUpdateTime >= averagePeriod) {
-  //   calculateAverages();
-  //   displayUpdateTime = currentTime;
-  // }
+  // Update averages and display every 5 seconds
+  if (currentTime - displayUpdateTime >= averagePeriod) {
+    calculateAverages();
+    displayUpdateTime = currentTime;
+  }
 
 
   
-  // char customKey = customKeypad.getKey();
+  char customKey = customKeypad.getKey();
   
-  // if (customKey) {
-  //   Serial.println(customKey);
-  //   lastKeyPressed = customKey;
-  //   lcd.clear(); // Clear the screen when a new key is pressed
-  // }
+  if (customKey) {
+    Serial.println(customKey);
+    lastKeyPressed = customKey;
+    lcd.clear(); // Clear the screen when a new key is pressed
+  }
 
-  // updateDisplay();
+  updateDisplay();
+  
+  delay(2000);
 
-  delay(5000);
 }
 
 
@@ -152,20 +157,28 @@ void loop() {
 
 void updateDisplay(){
     // Display based on the last key pressed
-  if (lastKeyPressed == '1') {
-    displayHz();
-  }
-  else if (lastKeyPressed == '2') {
-    displayIP();
-    displayAvgWindSpeed();
-  }
-  else if (lastKeyPressed == '3'){
-    displayAvgWindDirection();
-  }
-  else if (lastKeyPressed == 'A') {
-    displayWindVolts();
-  }
-  
+    if (lastKeyPressed == '1') {
+        displayHz();
+    }
+    else if (lastKeyPressed == '2') {
+        send_MQTT_message_1();
+        displayIP();
+        
+        // Create JSON with actual wind speed value
+
+        
+        displayAvgWindSpeed();
+    }
+    else if (lastKeyPressed == '3'){
+        send_MQTT_message_2();
+        // Create JSON with actual wind direction value
+
+        
+        displayAvgWindDirection();
+    }
+    else if (lastKeyPressed == 'A') {
+        displayWindVolts();
+    }
 }
 
 void addSample() {
@@ -327,16 +340,14 @@ void measureHz() {
   // Use shorter measurement window to get more frequent updates
   if (currentTime - prevTime >= sampleInterval) { 
     noInterrupts();
-    // Scale the pulse count to get Hz (pulses per second)
-    // If we sample every 500ms, multiply by 2 to get Hz
+
     frequency = pulseCount * (1000.0 / sampleInterval);
     pulseCount = 0;
     interrupts();
 
     windSpeed = frequency * 0.7; // Convert to wind speed
     prevTime = currentTime;
-    
-    // If no signals for a longer period, reset frequency to zero
+
     if (frequency == 0 && (currentTime - lastSampleTime > 3000)) {
       frequency = 0.0;
       windSpeed = 0.0;
@@ -364,24 +375,57 @@ void printAlphabet() {
   }
 }
 
-void send_MQTT_message() { 
-    if (!client.connected()) { // Tarkistetaan onko yhteys MQTT-brokeriin muodostettu 
-        connect_MQTT_server(); // Jos yhteyttä ei ollut, kutsutaan yhdistä -funktiota 
+void send_MQTT_message_1() { 
+    if (!client.connected()) { 
+        connect_MQTT_server(); 
+      
     } 
-    if (client.connected()) { // Jos yhteys on muodostettu 
-        client.publish(outTopic, "Hello from MQTT!"); // Lähetetään viesti MQTT-brokerille 
-        Serial.println("Message sent to MQTT server."); // Tulostetaan viesti onnistuneesta lähettämisestä 
+    
+    if (client.connected()) { 
+
+        String jsonSpeed = "{\"supersomic_winddir\":\"wind_dir\":" + String(avgWindDirection) + "}";
+        bool publishResult = client.publish("WindDirection from supersonic", jsonSpeed.c_str());
+        //snprintf(bufa_speed, sizeof(bufa_speed), "IOTJS={\"supersomic_windspeed\":\"windspeed\",\"S_value1\":%.2f}", avgWindSpeed);
+        //client.publish("WindSpeed from supersonic", jsonSpeed);
+        //boolean publishResult = client.publish(outTopic,jsonSpeed); 
+        if (publishResult) {
+            Serial.println("Message sent to MQTT server.1"); 
+        } else {
+            Serial.println("Failed to publish message.");
+        }
     } else { 
-        Serial.println("Failed to send message: not connected to MQTT server."); // Ei yhteyttä -> Yhteysvirheilmoitus 
+        Serial.println("Unable to connect to MQTT server."); 
     } 
 }
+void send_MQTT_message_2() { 
+    if (!client.connected()) { 
+        connect_MQTT_server(); 
+      
+    } 
+    
+    if (client.connected()) { 
+        char jsonDir[128];
+        snprintf(jsonDir, sizeof(jsonDir), "IOTJS={\"supersomic_winddir\":\"wind_dir\",\"S_value1\":%.2f}", avgWindDirection);
 
+        //snprintf(bufa_dir, sizeof(bufa_dir), "IOTJS={\"supersomic_winddir\":\"wind_dir\",\"S_value1\":%.2f}", avgWindDirection);
+        //client.publish("WindDirection from supersonic", jsonDir);
+        boolean publishResult = client.publish(outTopic,"jsonDir"); 
+        if (publishResult) {
+            Serial.println("Message sent to MQTT server.2"); 
+        } else {
+            Serial.println("Failed to publish message.");
+        }
+    } else { 
+        Serial.println("Unable to connect to MQTT server."); 
+    } 
+}
 void connect_MQTT_server() {  
     Serial.println("Connecting to MQTT"); // Tulostetaan vähän info-viestiä 
     if (client.connect(clientId, deviceId, deviceSecret)) { // Tarkistetaan saadaanko yhteys MQTT-brokeriin 
         Serial.println("Connected OK"); // Yhdistetty onnistuneesti 
     } else { 
         Serial.println("Connection failed."); // Yhdistäminen epäonnistui 
+        Serial.println(client.state());
     }     
 }
 
@@ -389,18 +433,10 @@ void connect_MQTT_server() {
 void fetchIP() {
   byte connection = 1;
   connection = Ethernet.begin(mymac);
-  // lcd.setCursor(0, 1);
-  // lcd.print(("\nW5100 Revision "));
   if (connection == 0) {
-    //lcd.print(("Failed to access Ethernet controller"));
     Serial.println(F("Failed to access Ethernet controller"));
   }
   
-  // lcd.print(("Setting up DHCP"));
-  // lcd.print("Connected with IP: ");
-
-  // IPAddress ip = Ethernet.localIP();
-  // lcd.print(ip);
   
   Serial.println(F("Setting up DHCP"));
   Serial.print("Connected with IP: ");
