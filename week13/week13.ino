@@ -9,7 +9,8 @@
 #define MAC_6 0x69
 #define ETHERNET_CS_PIN 10
 
-byte server[] = { 10, 6, 1, 15 }; // MQTT server IP address
+byte server[] = {10,6,0,23}; // MQTT server IP address
+//byte server[] = { 10,6,1,15 }; // MQTT-palvelimen IP-osoite 
 unsigned int Port = 1883;         // MQTT server port
 EthernetClient ethClient;
 
@@ -19,9 +20,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 PubSubClient client(server, Port, callback, ethClient);
 
-#define outTopic "ICT4_out_supersonic" // Topic for message sending
+#define outTopic "ICT4_out_2020"
 
 static uint8_t mymac[6] = { 0x44, 0x76, 0x58, 0x10, 0x00, MAC_6 }; // MAC address for Ethernet
+
+//char* clientId = "a731fsc6";
+//char* deviceId = "supersonic";
+//char* deviceSecret = "tamk";
 
 char* clientId = "a731fsd9";
 char* deviceId = "supersonic2025";
@@ -96,7 +101,7 @@ void setup() {
   // Pin setup
   pinMode(signalPin, INPUT);
   pinMode(windDirPin, INPUT);
-  attachInterrupt(digitalPinToInterrupt(signalPin), signalISR, RISING);
+  //attachInterrupt(digitalPinToInterrupt(signalPin), signalISR, RISING);
 
   // Network setup
   fetchIP();
@@ -133,8 +138,7 @@ void loop() {
     updateDisplay();
   }
 
-  // No blocking delay in main loop!
-  delay(50); // Short delay for stability without blocking responsiveness
+  delay(50);
 }
 
 void updateDisplay() {
@@ -180,13 +184,11 @@ void calculateAverages() {
   }
   avgWindSpeed = (speedCount > 0) ? windSpeedTotal / speedCount : 0.0;
   
-  // Calculate average wind direction (special handling for circular data)
   float sinSum = 0.0;
   float cosSum = 0.0;
   int dirCount = min(windDirSampleCount, 10);
   
   for (int i = 0; i < dirCount; i++) {
-    // Convert to radians and accumulate vector components
     float radians = windDirSamples[i] * PI / 180.0;
     sinSum += sin(radians);
     cosSum += cos(radians);
@@ -294,17 +296,15 @@ void measureHz() {
   unsigned long currentTime = millis();
   
   // Calculate frequency from pulse count
-  noInterrupts();
+  //noInterrupts();
   unsigned long localPulseCount = pulseCount;
   pulseCount = 0; // Reset counter
-  interrupts();
+  //interrupts();
   
-  // Convert to frequency (pulses per second)
-  // We're measuring for sampleInterval milliseconds, so scale to 1000ms
   frequency = localPulseCount * (1000.0 / sampleInterval);
   
-  // Convert frequency to wind speed (0.7 is the calibration factor)
-  windSpeed = frequency * 0.7;
+  // Convert frequency to wind speed (0.699 is the calibration factor)
+  windSpeed = frequency * 0.699 - 0.24;
   
   // If no pulses for 3 seconds, consider it zero
   if (localPulseCount == 0 && (currentTime - lastSampleTime > 3000)) {
@@ -315,25 +315,24 @@ void measureHz() {
 
 void send_MQTT_message_wind_speed() { 
     if (!client.connected()) { 
-        connect_MQTT_server();
-    } 
-    
+      connect_MQTT_server();
+    }
     if (client.connected()) { 
-        // Create proper JSON format
-        String jsonMessage = "{\"device\":\"supersonic2025\",\"wind_speed\":" + String(avgWindSpeed, 2) + "}";
-        
-        // Use the actual topic and JSON string
-        boolean publishResult = client.publish("WindSpeed", jsonMessage.c_str());
-        
-        if (publishResult) {
-            Serial.println("Wind speed sent to MQTT server");
-            lcd.setCursor(0, 3);
-            lcd.print("MQTT: Speed sent");
-        } else {
-            Serial.println("Failed to publish wind speed");
-            lcd.setCursor(0, 3);
-            lcd.print("MQTT: Send failed");
-        }
+      // Create proper JSON format
+      String jsonMessage = "{\"device\":\"supersonic2025\",\"wind_speed\":" + String(avgWindSpeed, 2) + "}";
+      
+      // Use the actual topic and JSON string
+      boolean publishResult = client.publish("WindSpeed", jsonMessage.c_str());
+      
+      if (publishResult) {
+          Serial.println("Wind speed sent to MQTT server");
+          lcd.setCursor(0, 3);
+          lcd.print("MQTT: Speed sent");
+      } else {
+          Serial.println("Failed to publish wind speed");
+          lcd.setCursor(0, 3);
+          lcd.print("MQTT: Send failed");
+      }
     } else { 
         Serial.println("Unable to connect to MQTT server");
         lcd.setCursor(0, 3);
@@ -342,41 +341,46 @@ void send_MQTT_message_wind_speed() {
 }
 
 void send_MQTT_message_wind_direction() { 
-    if (!client.connected()) { 
+    char valueStr[20];
+    dtostrf(avgWindDirection, 4, 2, valueStr);
+    char msg[50];
+    sprintf(msg, "{Supersonic_wind_direction: %s degrees}", valueStr);
+    Serial.println(msg);
+    if (!client.connected()) {
         connect_MQTT_server();
-    } 
-    
-    if (client.connected()) { 
-        // Create proper JSON format
-        String jsonMessage = "{\"device\":\"supersonic2025\",\"wind_direction\":" + String(avgWindDirection, 2) + "}";
-        
-        // Use the actual topic and JSON string
-        boolean publishResult = client.publish("WindDirection", jsonMessage.c_str());
-        
+
+    }
+
+    if (client.connected()) {
+     // String jsonSpeed = "{\"supersonic_winddir\":" + String(avgWindDirection, 2) + "}";
+      Serial.println("this is the jsonspeed info");
+      //Serial.println(jsonSpeed);
+      client.publish(outTopic, "muhahah is it air or soeemthing");
+  //     client.publish(outTopic, jsonSpeed.c_str());
+      bool publishResult = client.publish(outTopic, msg);
+        // String jsonSpeed = "{\"supersomic_winddir\":\"wind_dir\":" + String(avgWindDirection) + "}";
+        //bool publishResult = client.publish("WindDirection from supersonic", jsonSpeed.c_str());
+        //snprintf(bufa_speed, sizeof(bufa_speed), "IOTJS={\"supersomic_windspeed\":\"windspeed\",\"S_value1\":%.2f}", avgWindSpeed);
+        //client.publish("WindSpeed from supersonic", jsonSpeed);
+        //boolean publishResult = client.publish(outTopic,jsonSpeed);
         if (publishResult) {
-            Serial.println("Wind direction sent to MQTT server");
-            lcd.setCursor(0, 3);
-            lcd.print("MQTT: Direction sent");
+            Serial.println("Message sent to MQTT server.1");
         } else {
-            Serial.println("Failed to publish wind direction");
-            lcd.setCursor(0, 3);
-            lcd.print("MQTT: Send failed");
+            Serial.println("Failed to publish message.");
         }
-    } else { 
-        Serial.println("Unable to connect to MQTT server");
-        lcd.setCursor(0, 3);
-        lcd.print("MQTT: Not connected");
-    } 
+    } else {
+        Serial.println("Unable to connect to MQTT server.");
+    }
 }
 
 void connect_MQTT_server() {  
-    Serial.println("Connecting to MQTT"); 
-    if (client.connect(clientId, deviceId, deviceSecret)) { 
-        Serial.println("Connected OK"); 
-    } else { 
-        Serial.println("Connection failed."); 
-        Serial.println(client.state());
-    }     
+  Serial.println("Connecting to MQTT"); 
+  if (client.connect(clientId, deviceId, deviceSecret)) { 
+      Serial.println("Connected OK"); 
+  } else { 
+    Serial.println("Connection failed."); 
+    Serial.println(client.state());
+  }     
 }
 
 void fetchIP() {
