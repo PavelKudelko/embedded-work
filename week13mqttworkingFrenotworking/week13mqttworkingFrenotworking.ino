@@ -23,8 +23,6 @@ char* clientId = "a731fsd9";
 char* deviceId = "sonic25";
 char* deviceSecret = "tamk";
 
-
-
 // Sampling and averaging variables
 unsigned long sampleInterval = 500; // 500msa = 2 samples per second
 unsigned long lastSampleTime = 0;
@@ -71,9 +69,8 @@ IPAddress IP;
 
 
 void signalISR() {
-    pulseCount++;
+  pulseCount++;
 }
-
 
 void setup() {
   Serial.begin(9600);
@@ -83,12 +80,11 @@ void setup() {
   frequency = 0.0;
   windSpeed = 0.0;
 
-    // Clear sample arrays
+  // Clear sample arrays
   for (int i = 0; i < 10; i++) {
     windDirSamples[i] = 0.0;
     windSpeedSamples[i] = 0.0;
   }
-
 
   pinMode(signalPin, INPUT);
   pinMode(windDirPin, INPUT);
@@ -130,9 +126,6 @@ void loop() {
 
 }
 
-
-
-
 void updateDisplay(){
     // Always show IP address at top
     lcd.setCursor(0, 0);
@@ -141,16 +134,16 @@ void updateDisplay(){
 
     // Display based on the last key pressed
     if (lastKeyPressed == '1') {
-        displayMainInfo();
+      displayMainInfo();
     }
     else if (lastKeyPressed == '2') {
-         displayAvgWindSpeed();
-        send_MQTT_message_wind_speed();
+        displayAvgWindSpeed();
+      send_MQTT_message_wind_speed();
      
     }
     else if (lastKeyPressed == '3'){
-         displayAvgWindDirection();
-        send_MQTT_message_wind_direction();
+        displayAvgWindDirection();
+      send_MQTT_message_wind_direction();
      
     }
 }
@@ -255,9 +248,7 @@ float getWindDirectionDegree(float voltage) {
   } else {
     return 315;               // North West (315°)
   }
-
 }
-
 
 String getDirectionString(float degree) {
   // Round to nearest compass direction
@@ -272,15 +263,6 @@ String getDirectionString(float degree) {
   return "Unknown";
 }
 
-// void displayWindVolts() {
-//   lcd.setCursor(0,1);
-//   lcd.print("Wind Volts: ");
-//   lcd.print(windDirVolts);
-//   lcd.setCursor(18, 1);
-//   lcd.print("V");
-// }
-
-
 void displayMainInfo() {
   lcd.setCursor(0,1);
   lcd.print("frequency: ");
@@ -288,18 +270,18 @@ void displayMainInfo() {
   lcd.setCursor(17, 1);
   lcd.print("hz");
 
-    lcd.setCursor(0,2);
-    lcd.print("Speed: ");
-    lcd.print(avgWindSpeed, 1);
-    lcd.setCursor(11, 2);
-    lcd.print("m/s");
+  lcd.setCursor(0,2);
+  lcd.print("Speed: ");
+  lcd.print(avgWindSpeed, 1);
+  lcd.setCursor(11, 2);
+  lcd.print("m/s");
 
 
-    lcd.setCursor(0, 3);
-    lcd.print("Direction: ");
-    lcd.print(avgWindDirection, 1);
-    lcd.setCursor(14, 3);}
-
+  lcd.setCursor(0, 3);
+  lcd.print("Direction: ");
+  lcd.print(avgWindDirection, 1);
+  lcd.setCursor(14, 3);
+}
 
 void measureHz() {
   unsigned long currentTime = millis();
@@ -413,7 +395,6 @@ void fetchIP() {
     Serial.println(F("Failed to access Ethernet controller"));
   }
 
-
   Serial.println(F("Setting up DHCP"));
   Serial.print("Connected with IP: ");
   Serial.println(Ethernet.localIP());
@@ -421,4 +402,3 @@ void fetchIP() {
 
   delay(1500);
 }
-
