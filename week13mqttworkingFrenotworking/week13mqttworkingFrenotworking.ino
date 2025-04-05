@@ -104,12 +104,12 @@ void loop() {
   //check for keypad input first
   char customKey = customKeypad.getKey();
     if (customKey) {
-    Serial.println(customKey);
-    lastKeyPressed = customKey;
-    lcd.clear(); // Clear the screen when a new key is pressed
-    lcd.setCursor(0, 0);
-    lcd.print("key pressed: ");
-    lcd.print(customKey);
+      Serial.println(customKey);
+      lastKeyPressed = customKey;
+      lcd.clear(); // Clear the screen when a new key is pressed
+      lcd.setCursor(0, 0);
+      lcd.print("key pressed: ");
+      lcd.print(customKey);
   }
     // Sample at the defined interval (500ms = 2 samples/second)
   if (currentTime - lastSampleTime >= sampleInterval) {
@@ -123,9 +123,9 @@ void loop() {
   if (currentTime - displayUpdateTime >= averagePeriod) {
     calculateAverages();
     displayUpdateTime = currentTime;
-    updateDisplay();
+    // update display was here
   }
-
+  updateDisplay();
   delay(50);
 
 }
@@ -215,7 +215,7 @@ void displayAvgWindSpeed() {
   lcd.setCursor(0, 1);
   lcd.print("Speed: ");
   lcd.print(avgWindSpeed, 1);
-  //show two decinmal place
+  //show one decinmal place
   lcd.setCursor(14, 1);
   lcd.print("m/s");
 }
@@ -305,6 +305,7 @@ void displayMainInfo() {
 
 void measureHz() {
   unsigned long currentTime = millis();
+  unsigned long actualInterval = currentTime - lastSampleTime;
 
   // Calculate frequency from pulse count
   noInterrupts();
@@ -314,7 +315,7 @@ void measureHz() {
 
   // Convert to frequency (pulses per second)
   // We're measuring for sampleInterval milliseconds, so scale to 1000ms
-  frequency = localPulseCount * (1000.0 / sampleInterval);
+  frequency = localPulseCount * (1000.0 / actualInterval);
 
   // Convert frequency to wind speed 
   windSpeed = frequency * 0.699 - 0.24;
