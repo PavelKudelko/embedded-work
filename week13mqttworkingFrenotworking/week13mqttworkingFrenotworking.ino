@@ -67,6 +67,10 @@ float windDirVolts = 0.0;
 
 IPAddress IP;
 
+// Add these global variables
+unsigned long lastMqttWindSpeedTime = 0;
+unsigned long lastMqttWindDirTime = 0;
+const unsigned long mqttSendInterval = 5000; // 5 seconds
 
 void signalISR() {
   pulseCount++;
@@ -103,9 +107,9 @@ void loop() {
       Serial.println(customKey);
       lastKeyPressed = customKey;
       lcd.clear(); // Clear the screen when a new key is pressed
-      lcd.setCursor(0, 0);
-      lcd.print("key pressed: ");
-      lcd.print(customKey);
+      // lcd.setCursor(0, 0);
+      // lcd.print("key pressed: ");
+      // lcd.print(customKey);
   }
     // Sample at the defined interval (500ms = 2 samples/second)
   if (currentTime - lastSampleTime >= sampleInterval) {
@@ -119,14 +123,14 @@ void loop() {
   if (currentTime - displayUpdateTime >= averagePeriod) {
     calculateAverages();
     displayUpdateTime = currentTime;
+ 
     // update display was here
   }
-  updateDisplay();
-  delay(50);
+       updateDisplay(currentTime);
 
 }
 
-void updateDisplay(){
+void updateDisplay(unsigned long currentTime){
     // Always show IP address at top
     lcd.setCursor(0, 0);
     lcd.print("IP:");
@@ -135,17 +139,27 @@ void updateDisplay(){
     // Display based on the last key pressed
     if (lastKeyPressed == '1') {
       displayMainInfo();
+       if (currentTime - lastMqttWindSpeedTime >= mqttSendInterval) {
+      send_MQTT_message_2_message();
+      lastMqttWindSpeedTime = currentTime;
+    }
+
     }
     else if (lastKeyPressed == '2') {
         displayAvgWindSpeed();
+            if (currentTime - lastMqttWindSpeedTime >= mqttSendInterval) {
       send_MQTT_message_wind_speed();
+      lastMqttWindSpeedTime = currentTime;
+    }
      
     }
     else if (lastKeyPressed == '3'){
         displayAvgWindDirection();
+       if (currentTime - lastMqttWindDirTime >= mqttSendInterval) {
       send_MQTT_message_wind_direction();
-     
+      lastMqttWindDirTime = currentTime;
     }
+  }
 }
 
 void addSample() {
@@ -195,7 +209,7 @@ void calculateAverages() {
   windSpeedSampleCount = 0;
   windDirSampleCount = 0;
 
-  Serial.print("5s Avg Wind Speed: ");
+  Serial.print(" Avg Wind Speed: ");
   Serial.print(avgWindSpeed);
   Serial.print(" m/s, Avg Direction: ");
   Serial.print(avgWindDirection);
@@ -219,9 +233,11 @@ void displayAvgWindDirection() {
   lcd.setCursor(16, 1);
   lcd.print((char)223); // Degree symbol
 
-  lcd.setCursor(0, 2);
+  lcd.setCursor(0, 3);
   String directionStr = getDirectionString(avgWindDirection);
   lcd.print(directionStr);
+  Serial.println("where is my northwest");
+  Serial.println(directionStr);
 }
 
 void measureWindDirection() {
@@ -232,21 +248,21 @@ void measureWindDirection() {
 float getWindDirectionDegree(float voltage) {
 
   if (voltage < 1.2) {
-    return 0;                 // North (0°)
+    return 0.0;                 // North (0°)
   } else if (voltage < 1.67){
-    return 45;                // North East (45°)
+    return 45.0;                // North East (45°)
   } else if (voltage < 2.15){
-    return 90;                // East (90°)
+    return 90.0;                // East (90°)
   } else if (voltage < 2.63){
-    return 135;               // South East (135°)
+    return 135.0;               // South East (135°)
   } else if (voltage < 3.1){
-    return 180;               // South (180°)
+    return 180.0;               // South (180°)
   } else if (voltage < 3.58){
-    return 225;               // South West (225°)
+    return 225.0;               // South West (225°)
   } else if (voltage < 4.405){
-    return 270;               // West (270°)
+    return 270.0;               // West (270°)
   } else {
-    return 315;               // North West (315°)
+    return 315.0;               // North West (315°)
   }
 }
 
@@ -348,8 +364,6 @@ void send_MQTT_message_wind_direction() {
     } else {
         Serial.println("Unable to connect to MQTT server.");
     }
-
-    delay(100);
 }
 void send_MQTT_message_wind_speed() {
 
@@ -375,8 +389,36 @@ void send_MQTT_message_wind_speed() {
     } else {
         Serial.println("Unable to connect to MQTT server.");
     }
-    delay(100);
 }
+void  send_MQTT_message_2_message(){
+    char valueStr_speed[20];
+    char valueStr_direction[20];
+    dtostrf(avgWindSpeed, 4, 2, valueStr_speed);
+    dtostrf(avgWindDirection, 4, 2, valueStr_direction);
+    char msg[128];
+    sprintf(msg, "{\"Supersonic_wind_speed\": \"%s m/s\", \"Supersonic_wind_direction\": \"%s degree\"}", valueStr_speed, valueStr_direction);
+    //sprintf(msg, "{Supersonic_wind_speed: %s m/s, Supersonic_wind_direction: %s degree}", valueStr_speed, valueStr_direction);
+    Serial.println(msg);
+
+
+    if (!client.connected()) {
+        connect_MQTT_server();
+
+    }
+
+    if (client.connected()) {
+         boolean publishResult = client.publish(outTopic,msg);
+        if (publishResult) {
+            Serial.println("Message sent to MQTT server about both messages");
+        } else {
+            Serial.println("Failed to publish message.");
+        }
+    } else {
+        Serial.println("Unable to connect to MQTT server.");
+    }
+
+  }
+
 void connect_MQTT_server() {
     Serial.println("Connecting to MQTT"); // Tulostetaan vähän info-viestiä
     if (client.connect(clientId, deviceId, deviceSecret)) { // Tarkistetaan saadaanko yhteys MQTT-brokeriin
