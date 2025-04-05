@@ -211,7 +211,6 @@ void calculateAverages() {
 
 
 void displayAvgWindSpeed() {
-  lcd.clear();
   lcd.setCursor(0, 1);
   lcd.print("Speed: ");
   lcd.print(avgWindSpeed, 1);
@@ -221,7 +220,6 @@ void displayAvgWindSpeed() {
 }
 
 void displayAvgWindDirection() {
-  lcd.clear();
   lcd.setCursor(0, 1);
   lcd.print("Direction: ");
   lcd.print(avgWindDirection, 1);
@@ -347,7 +345,7 @@ void measureHz() {
 //   }
 // }
 
-void send_MQTT_message_wind_speed() {
+void send_MQTT_message_wind_direction() {
     char valueStr[20];
     dtostrf(avgWindDirection, 4, 2, valueStr);
     char msg[50];
@@ -369,9 +367,9 @@ void send_MQTT_message_wind_speed() {
         Serial.println("Unable to connect to MQTT server.");
     }
 
-    delay(5000);
+    delay(100);
 }
-void send_MQTT_message_wind_direction() {
+void send_MQTT_message_wind_speed() {
 
     char valueStr[20];
     dtostrf(avgWindSpeed, 4, 2, valueStr);
@@ -395,6 +393,7 @@ void send_MQTT_message_wind_direction() {
     } else {
         Serial.println("Unable to connect to MQTT server.");
     }
+    delay(100);
 }
 void connect_MQTT_server() {
     Serial.println("Connecting to MQTT"); // Tulostetaan vähän info-viestiä
