@@ -231,19 +231,19 @@ void measureWindDirection() {
 
 float getWindDirectionDegree(float voltage) {
 
-  if (voltage < 1.44) {
+  if (voltage < 1.2) {
     return 0;                 // North (0°)
-  } else if (voltage < 1.91){
+  } else if (voltage < 1.67){
     return 45;                // North East (45°)
-  } else if (voltage < 2.39){
+  } else if (voltage < 2.15){
     return 90;                // East (90°)
-  } else if (voltage < 2.86){
+  } else if (voltage < 2.63){
     return 135;               // South East (135°)
-  } else if (voltage < 3.34){
+  } else if (voltage < 3.1){
     return 180;               // South (180°)
-  } else if (voltage < 3.81){
+  } else if (voltage < 3.58){
     return 225;               // South West (225°)
-  } else if (voltage < 4.29){
+  } else if (voltage < 4.405){
     return 270;               // West (270°)
   } else {
     return 315;               // North West (315°)
@@ -279,8 +279,8 @@ void displayMainInfo() {
 
   lcd.setCursor(0, 3);
   lcd.print("Direction: ");
-  lcd.print(avgWindDirection, 1);
-  lcd.setCursor(14, 3);
+  lcd.print(avgWindDirection, 2);
+  lcd.setCursor(16, 3);
 }
 
 void measureHz() {

@@ -10,7 +10,6 @@
 #define ETHERNET_CS_PIN 10
 
 byte server[] = {10,6,0,23}; // MQTT server IP address
-//byte server[] = { 10,6,1,15 }; // MQTT-palvelimen IP-osoite 
 unsigned int Port = 1883;         // MQTT server port
 EthernetClient ethClient;
 
@@ -23,10 +22,6 @@ PubSubClient client(server, Port, callback, ethClient);
 #define outTopic "ICT4_out_2020"
 
 static uint8_t mymac[6] = { 0x44, 0x76, 0x58, 0x10, 0x00, MAC_6 }; // MAC address for Ethernet
-
-//char* clientId = "a731fsc6";
-//char* deviceId = "supersonic";
-//char* deviceSecret = "tamk";
 
 char* clientId = "a731fsd9";
 char* deviceId = "supersonic2025";
@@ -101,7 +96,7 @@ void setup() {
   // Pin setup
   pinMode(signalPin, INPUT);
   pinMode(windDirPin, INPUT);
-  //attachInterrupt(digitalPinToInterrupt(signalPin), signalISR, RISING);
+  attachInterrupt(digitalPinToInterrupt(signalPin), signalISR, RISING);
 
   // Network setup
   fetchIP();
@@ -311,7 +306,8 @@ void measureHz() {
     frequency = 0.0;
     windSpeed = 0.0;
   }
-}
+}  attachInterrupt(digitalPinToInterrupt(signalPin), signalISR, RISING);
+
 
 void send_MQTT_message_wind_speed() { 
     if (!client.connected()) { 
@@ -352,17 +348,8 @@ void send_MQTT_message_wind_direction() {
     }
 
     if (client.connected()) {
-     // String jsonSpeed = "{\"supersonic_winddir\":" + String(avgWindDirection, 2) + "}";
       Serial.println("this is the jsonspeed info");
-      //Serial.println(jsonSpeed);
-      client.publish(outTopic, "muhahah is it air or soeemthing");
-  //     client.publish(outTopic, jsonSpeed.c_str());
       bool publishResult = client.publish(outTopic, msg);
-        // String jsonSpeed = "{\"supersomic_winddir\":\"wind_dir\":" + String(avgWindDirection) + "}";
-        //bool publishResult = client.publish("WindDirection from supersonic", jsonSpeed.c_str());
-        //snprintf(bufa_speed, sizeof(bufa_speed), "IOTJS={\"supersomic_windspeed\":\"windspeed\",\"S_value1\":%.2f}", avgWindSpeed);
-        //client.publish("WindSpeed from supersonic", jsonSpeed);
-        //boolean publishResult = client.publish(outTopic,jsonSpeed);
         if (publishResult) {
             Serial.println("Message sent to MQTT server.1");
         } else {
